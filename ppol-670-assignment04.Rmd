@@ -7,24 +7,82 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+wyoming <- read_csv("~/Documents/Wyoming data import.csv")
 ```
 
-## R Markdown
+## Reshaping the Data
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+In order to make the first plot, an alluvial plot based on Paul Butler's work with this data, we first need to reshape the data so that we have an effective vote variable. This variable signifies who a persons' vote would have counted for in a contest between the two top candidates.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+library(ggalluvial)
+library(ggplot2)
 
-```{r cars}
-summary(cars)
+# Create empty variables
+wyoming$e_vote <- list(NA)
+wyoming$Biden <- list(NA)
+wyoming$Steyer <- list(NA)
+wyoming$Sanders<- list(NA)
+wyoming$Klobuchar <- list(NA)
+wyoming$Gabbard <- list(NA)
+wyoming$Warren <- list(NA)
+wyoming$Bloomberg <- list(NA)
+wyoming$Buttgieg <- list(NA)
+
+
+# Fill variable by row and set of rankings. 
+for (i in 1:length(wyoming$Serial)) {
+  wyoming$Biden[i] <- match(wyoming[i,6:10],1)
+  wyoming$Steyer[i] <- match(wyoming[i,6:10],3)
+  wyoming$Sanders[i] <- match(wyoming[i,6:10],4)
+  wyoming$Klobuchar[i] <- match(wyoming[i,6:10],5)
+  wyoming$Gabbard[i] <- match(wyoming[i,6:10],7)
+  wyoming$Warren[i] <- match(wyoming[i,6:10],8)
+  wyoming$Bloomberg <- -match(wyoming[i,6:10],9)
+  wyoming$Buttgieg <- match(wyoming[i,6:10],11)
+
+
+  for (n in 1:5) {
+    if (wyoming[i,n+5]=="1") {
+      wyoming$e_vote[i] <- 1
+      break
+    } else if (wyoming[i,n+5] =="4") {
+      wyoming$e_vote[i] <- 4
+      break
+    } 
+    }
+}
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+# Summarize by 1st preference and effective vote
+wyoming$e_vote<-as.character(wyoming$e_vote)
+wyoming_freq<-wyoming %>%
+  group_by(`1st`,e_vote) %>%
+  summarize(Freq = n()) %>%
+  arrange(desc(Freq))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Alluvial plot with first preference and effective vote
+
+
+```{r}
+vote_al <- ggplot(data = wyoming_freq,
+       aes(axis1 = `1st`, axis2 = e_vote,
+           y = Freq)) +
+  scale_x_discrete(limits = c("1st Preference", "Effective Vote"), expand = c(.2, .05)) +
+  xlab("Candidate Preference") +
+  geom_alluvium(aes(fill= `1st`)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme_minimal() +
+  ggtitle("1st preferences of Wyoming Voters and Effective Vote")
+vote_al
+```
+
+
+## Looking for a latent variable: Ideal Point Estimation
+```{r}
+```
