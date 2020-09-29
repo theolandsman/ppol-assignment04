@@ -15,32 +15,22 @@ wyoming <- read_csv("~/Documents/Wyoming data import.csv")
 
 In order to make the first plot, an alluvial plot based on Paul Butler's work with this data, we first need to reshape the data so that we have an effective vote variable. This variable signifies who a persons' vote would have counted for in a contest between the two top candidates.
 
+In order to make our ideal point plots, we also need a version of the ranking data reshaped into preference form. This is not a very tidyverse way of doing it, but I found that the easiest way to reshape the data to get my head around was a set of nested for loops. 
+
 ```{r}
 library(ggalluvial)
 library(ggplot2)
 
-# Create empty variables
-wyoming$e_vote <- list(NA)
-wyoming$Biden <- list(NA)
-wyoming$Steyer <- list(NA)
-wyoming$Sanders<- list(NA)
-wyoming$Klobuchar <- list(NA)
-wyoming$Gabbard <- list(NA)
-wyoming$Warren <- list(NA)
-wyoming$Bloomberg <- list(NA)
-wyoming$Buttgieg <- list(NA)
-
-
 # Fill variable by row and set of rankings. 
 for (i in 1:length(wyoming$Serial)) {
-  wyoming$Biden[i] <- match(wyoming[i,6:10],1)
-  wyoming$Steyer[i] <- match(wyoming[i,6:10],3)
-  wyoming$Sanders[i] <- match(wyoming[i,6:10],4)
-  wyoming$Klobuchar[i] <- match(wyoming[i,6:10],5)
-  wyoming$Gabbard[i] <- match(wyoming[i,6:10],7)
-  wyoming$Warren[i] <- match(wyoming[i,6:10],8)
-  wyoming$Bloomberg <- -match(wyoming[i,6:10],9)
-  wyoming$Buttgieg <- match(wyoming[i,6:10],11)
+  wyoming$Biden[i] <- match(1, wyoming[i,6:10], NULL)
+  wyoming$Steyer[i] <- match(3, wyoming[i,6:10], NULL)
+  wyoming$Sanders[i] <- match(4, wyoming[i,6:10], NULL)
+  wyoming$Klobuchar[i] <- match(5, wyoming[i,6:10], NULL)
+  wyoming$Gabbard[i] <- match(7, wyoming[i,6:10], NULL)
+  wyoming$Warren[i] <- match(8, wyoming[i,6:10], NULL)
+  wyoming$Bloomberg[i] <- match(9, wyoming[i,6:10], NULL)
+  wyoming$Buttgieg[i] <- match(11, wyoming[i,6:10], NULL)
 
 
   for (n in 1:5) {
@@ -85,4 +75,48 @@ vote_al
 
 ## Looking for a latent variable: Ideal Point Estimation
 ```{r}
+library(smacof)
+w_matrix <- wyoming[,11:18]
+# There's an error happening where even though the function should handle 
+# Missing preferences, its crashing if at least one column isn't full, dropping 
+# observations without a full Biden column  (ie people who put Biden as a choice 
+# somewhere on their ballot) preserves as much data as possible. 
+# 
+w_matrix <- filter(w_matrix,!is.na(Biden))
+wyoming_ideal<-unfolding(w_matrix, ndim = 2, type = "ordinal")
+```
+
+## Visualizing Ideal Points: Candidates
+
+```{r}
+candidate_points<- as.data.frame(wyoming_ideal$conf.col)
+ggplot(data = candidate_points,
+       mapping = aes(x = D1, 
+                     y = D2, 
+                     label = rownames(candidate_points))) +
+  geom_point() + 
+  geom_text(nudge_y = .1) +
+  labs(title ="Ideal Point Estimates of the ratings of Democratic Presidential Candidates")
+  
+```
+
+## Visualizing Ideal Points: Voters
+
+```{r}
+voter_points<-as.data.frame(wyoming_ideal$conf.row)
+ggplot(data = voter_points,
+       mapping = aes(x = D2))+
+  geom_density(fill = "blue", alpha = .4) + 
+  scale_x_continuous(breaks = candidate_points$D2, labels = rownames(candidate_points)) +
+  theme_update(axis.text.x = element_text(angle =45)) 
+```
+```{r}
+voter_points<-as.data.frame(wyoming_ideal$conf.row)
+ggplot(data = voter_points,
+       mapping = aes(x = D2))+
+  geom_histogram(fill = "white", 
+                 color = "black") + 
+  scale_x_continuous(breaks = candidate_points$D2, 
+                     labels = rownames(candidate_points)) +
+  theme_update(axis.text.x = element_text(angle =45)) 
 ```
