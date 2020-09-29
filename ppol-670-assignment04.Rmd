@@ -17,7 +17,7 @@ In order to make the first plot, an alluvial plot based on Paul Butler's work wi
 
 In order to make our ideal point plots, we also need a version of the ranking data reshaped into preference form. This is not a very tidyverse way of doing it, but I found that the easiest way to reshape the data to get my head around was a set of nested for loops. 
 
-```{r}
+```{r, warning=FALSE}
 library(ggalluvial)
 library(ggplot2)
 
@@ -45,6 +45,8 @@ for (i in 1:length(wyoming$Serial)) {
 }
 ```
 
+In order to create an alluvial plot of vote transfers, we then need to aggregate the data by combinations of 1st round vote and effective vote so that ggalluvial can construct the set of alluvium and nodes that make the plot. 
+
 ```{r}
 # Summarize by 1st preference and effective vote
 wyoming$e_vote<-as.character(wyoming$e_vote)
@@ -60,17 +62,30 @@ wyoming_freq<-wyoming %>%
 
 ```{r}
 vote_al <- ggplot(data = wyoming_freq,
-       aes(axis1 = `1st`, axis2 = e_vote,
+       aes(axis1 = `1st`, 
+           axis2 = e_vote,
            y = Freq)) +
-  scale_x_discrete(limits = c("1st Preference", "Effective Vote"), expand = c(.2, .05)) +
+  scale_x_discrete(limits = c("1st Preference", "Effective Vote"), 
+                   expand = c(.2, .05)) +
   xlab("Candidate Preference") +
   geom_alluvium(aes(fill= `1st`)) +
   geom_stratum() +
   geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
   theme_minimal() +
-  ggtitle("1st preferences of Wyoming Voters and Effective Vote")
+  labs(title= "1st preferences of Wyoming Voters and Effective Vote",
+       caption = "Source: Democratic Party of Wyoming, https://www.wyodems.org/2020caucusresults") +
+  scale_fill_discrete(labels = c("Biden: (1)",
+                                 "Steyer",
+                                 "Sanders: (4)",
+                                 "Klobuchar",
+                                 "Gabbard",
+                                 "Warren",
+                                 "Bloomberg",
+                                 "Buttgieg",
+                                  "NA")) 
 vote_al
 ```
+As a first plot, this is not off to a great start. I had worked with ggalluvial before, but forgotten some of the specifications for stratum renaming and spacing. 
 
 
 ## Looking for a latent variable: Ideal Point Estimation
@@ -96,7 +111,9 @@ ggplot(data = candidate_points,
                      label = rownames(candidate_points))) +
   geom_point() + 
   geom_text(nudge_y = .1) +
-  labs(title ="Ideal Point Estimates of the ratings of Democratic Presidential Candidates")
+  labs(title ="Ideal point estimates of the ratings of 
+  Democratic presidential candidates",caption = "Source: Democratic Party of Wyoming, https://www.wyodems.org/2020caucusresults") +
+  theme_classic()
   
 ```
 
@@ -108,7 +125,10 @@ ggplot(data = voter_points,
        mapping = aes(x = D2))+
   geom_density(fill = "blue", alpha = .4) + 
   scale_x_continuous(breaks = candidate_points$D2, labels = rownames(candidate_points)) +
-  theme_update(axis.text.x = element_text(angle =45)) 
+  theme_update(axis.text.x = element_text(angle =45))+
+  labs(title ="Dimension 2 ideal point space 
+       density of voters with candidates for reference",
+       caption = "Source: Democratic Party of Wyoming, https://www.wyodems.org/2020caucusresults") 
 ```
 ```{r}
 voter_points<-as.data.frame(wyoming_ideal$conf.row)
@@ -118,5 +138,8 @@ ggplot(data = voter_points,
                  color = "black") + 
   scale_x_continuous(breaks = candidate_points$D2, 
                      labels = rownames(candidate_points)) +
-  theme_update(axis.text.x = element_text(angle =45)) 
+  theme_update(axis.text.x = element_text(angle =45)) +
+  labs(title ="Dimension 2 ideal point space 
+       histogram of voters with candidates for reference",
+       caption = "Source: Democratic Party of Wyoming, https://www.wyodems.org/2020caucusresults") 
 ```
